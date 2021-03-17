@@ -1,0 +1,136 @@
+--TASK 1
+ IN the default. Can only be read (not modified) inside the procedure. IN OUT and OUT.
+--2A
+
+create table find_country (
+  country_id number NOT NULL,
+  country_name varchar2(10) NOT NULL,
+  population number not null,
+  area number  not null
+);
+
+CREATE OR REPLACE PROCEDURE find_country_region(
+p_country_id IN countries.country_id%TYPE, 
+p_country_name OUT countries.country_name%type, 
+p_region_name OUT regions.region_name%type) IS 
+BEGIN 
+SELECT country_name, region_name 
+INTO p_country_name, p_region_name
+FROM countries c, regions r
+WHERE c.region_id = r.region_id AND country_id = p_country_id;
+EXCEPTION 
+WHEN NO_DATA_FOUND 
+THEN DBMS_OUTPUT.PUT_LINE('No data found at: ' || p_country_id); 
+END;
+
+--2B
+declare
+v_country_id countries.country_id%type;
+v_country_name countries.country_name%type;
+v_region_name regions.region_name%type;
+begin
+v_country_id := 'CA';
+find_country_region(v_country_id, v_country_name, v_region_name);
+DBMS_OUTPUT.PUT_LINE('Name:' || v_country_name || ' Region name:' || v_region_name);
+end;
+
+--3
+CREATE OR REPLACE PROCEDURE square 
+(p_integer IN OUT INTEGER) IS 
+BEGIN p_integer := p_integer * p_integer; 
+END; 
+
+DECLARE 
+v_integer INTEGER; 
+BEGIN v_integer := -20; 
+-- 4, 7, -20 
+square(v_integer); 
+DBMS_OUTPUT.PUT_LINE('The answer is: ' || v_integer); 
+END;
+
+--4. List the three methods of passing parameters to a procedure.
+
+/*A. Retrieve your anonymous block from question 2B and modify its call to
+find_country_region to pass the three parameters using named notation. Test
+your block, again using country_id CA (Canada).*/
+
+DECLARE 
+a_c_name countries_copy.country_name%TYPE;
+a_r_reg_name regions_copy.region_name%TYPE;
+BEGIN
+find_country_region(p_count_id=>'CA',  p_count_name=>a_c_name, p_count_reg_name=>a_r_reg_name);
+DBMS_OUTPUT.PUT_LINE('Country name: ' || a_c_name || ',');
+DBMS_OUTPUT.PUT_LINE('Region name: ' || a_r_reg_name || ';');
+END;
+
+/*B. Modify the anonymous block from the previous step to pass the FIRST two
+parameters using named notation and the LAST parameter using positional
+notation. Test the block again. What happens?*/
+
+/*Actually, error will occur.Because named notation cannot place before the
+positional notation.*/
+
+DECLARE 
+a_c_name countries_copy.country_name%TYPE;
+a_r_reg_name regions_copy.region_name%TYPE;
+BEGIN
+find_country_region(p_count_id=>'CA',  p_count_name=>a_c_name, a_r_reg_name);
+DBMS_OUTPUT.PUT_LINE('Country name: ' || a_c_name || ',');
+DBMS_OUTPUT.PUT_LINE('Region name: ' || a_r_reg_name || ';');
+END;
+
+--Error itself:
+
+/*Error report -
+ORA-06550: line 5, column 66:
+PLS-00312: a positional parameter association may not follow a named association
+ORA-06550: line 5, column 1:
+PL/SQL: Statement ignored
+06550. 00000 -  "line %s, column %s:\n%s"
+Cause:    Usually a PL/SQL compilation error./
+
+/*C. Correct the problem in the previous step by modifying the anonymous block
+again to pass the first parameter using positional notation and the last two
+using named notation. Test the block again.*/
+
+DECLARE 
+a_c_name countries_copy.country_name%TYPE;
+a_r_reg_name regions_copy.region_name%TYPE;
+BEGIN
+find_country_region('CA',  p_count_name=>a_c_name, p_count_reg_name=>a_r_reg_name);
+DBMS_OUTPUT.PUT_LINE('Country name: ' || a_c_name || ',');
+DBMS_OUTPUT.PUT_LINE('Region name: ' || a_r_reg_name || ';');
+END;
+--TASK 6
+SET SERVEROUTPUT ON;
+CREATE OR REPLACE PROCEDURE 
+    find_country_region (v_country_id IN Countries.country_id%TYPE, v_country_name OUT Countries.country_name%TYPE, v_region_name OUT Regions.region_name%TYPE)
+    IS 
+BEGIN 
+    SELECT Countries.country_name, Regions.region_name 
+    INTO v_country_name, v_region_name 
+    FROM Countries
+    INNER JOIN Regions
+    ON Countries.region_id = Regions.region_id
+    WHERE country_id = v_country_id; 
+    EXCEPTION 
+        WHEN NO_DATA_FOUND THEN 
+        DBMS_OUTPUT.PUT_LINE('Country id: '|| v_country_id || ' does not exist'); 
+END;
+
+
+DECLARE 
+    p_country_id Countries.country_id%TYPE;
+    p_country_name Countries.country_name%TYPE;
+    p_region_name Regions.region_name%TYPE; 
+BEGIN 
+    p_country_id := 'CA'; -- not needed anymore 
+    find_country_region(v_country_id => p_country_id ,v_country_name => p_country_name ,v_region_name => p_region_name); 
+    DBMS_OUTPUT.PUT_LINE('Country name: ' || p_country_name || '     Region name: ' || p_region_name);
+END; 
+
+
+--TASK 7
+OUT Parameter --> Returns a value to the caller.
+IN Parameter --> Provides values for a subprogram to process.
+IN OUT Parameter --> Supplies an input value,which may be returned as a modified value.
