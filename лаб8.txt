@@ -1,0 +1,163 @@
+/*Q1. Create an UPDATE-INSERT stored procedure for table users with next
+columns:
+• ID NUMBER
+• NAME VARCHAR
+• SALARY NUMBER
+If id is null then insert a new record, else try find the user with provided id and
+update existing user. If no record found with provided id - insert new record
+with specified ID.
+ID parameter should be IN OUT*/
+
+CREATE TABLE UpdateIns(
+   id NUMBER,
+   name VARCHAR2(50),
+   salary NUMBER
+);
+
+CREATE OR REPLACE PROCEDURE UpdateInsPro(v_id IN OUT NUMBER, v_name IN VARCHAR2, v_salary IN NUMBER) IS
+   ui_id NUMBER;
+
+BEGIN
+   IF(v_id IS NULL) THEN
+      SELECT NVL(MAX(id), 0) INTO ui_id FROM UpdateIns;
+
+      INSERT INTO UpdateIns(id, name, salary)
+      VALUES (ui_id + 1, v_name, v_salary);
+   ELSE
+      SELECT id INTO ui_id FROM UpdateIns WHERE id = v_id;
+      UPDATE UpdateIns SET salary = v_salary, name = v_name WHERE id = v_id;
+   END IF;
+
+EXCEPTION WHEN NO_DATA_FOUND THEN
+   INSERT INTO UpdateIns(id, name, salary)
+   VALUES(v_id, v_name, v_salary);
+END UpdateInsPro;
+
+
+/*Q2. Create a DELETE stored procedure that can delete record from database
+if record is already not active and disable record if record is active. The table
+structure is:
+• ID NUMBER
+• NAME VARCHAR
+• ISACTIVE NUMBER (DEFAULT 1) ?*/
+
+CREATE TABLE DellTable(
+   id NUMBER,
+   name VARCHAR2(50),
+   isActive NUMBER
+);
+
+CREATE OR REPLACE PROCEDURE DellTablePro IS
+BEGIN
+   FOR j IN(SELECT * FROM DellTable) LOOP
+      IF(j.isActive = 1) THEN
+      UPDATE DellTable SET isActive = 0;
+      ELSE
+      DELETE FROM DellTable WHERE ID = j.id;
+      END IF;
+   END LOOP;
+END;
+
+BEGIN
+   DellTablePro();
+END;
+
+/*Q3. Create a Function that returns a Day of BREAK EVEN POINT for a
+selected month.
+You have next Tables:
+TABLE PRODUCT
+ID NUMBER
+NAME VARCHAR
+PRICE NUMBER
+TABLE TRANSACTION
+ID NUMBER
+CLIENT_ID NUMBER
+PRODUCT_ID NUMBER
+AMOUNT NUMBER
+TRANSACTION_DATE DATE
+TABLE CLIENT
+ID NUMBER
+NAME VARCHAR
+TABLE EXPENSES
+ID NUMBER
+MONTH NUMBER
+CATEGORY VARCHAR
+AMOUNT NUMBER
+**
+[You can google the definition of BREAK EVEN POINT. Definition from
+wikipedia: The break-even point (BEP) —is the point at which total cost and
+total revenue are equal, i.e. "even". There is no net loss or gain, and one has
+"broken even", though opportunity costs have been paid and capital has
+received the risk-adjusted, expected return.]*/
+
+CREATE TABLE product(
+    id NUMBER,
+    name VARCHAR(30),
+    price NUMBER
+);
+
+CREATE TABLE transaction(
+    id NUMBER,
+    client_id NUMBER,
+    product_id NUMBER,
+    amount NUMBER,
+    transaction_date DATE
+);
+
+CREATE TABLE expenses(
+    id NUMBER,
+    month NUMBER,
+    category VARCHAR(30),
+    amount NUMBER
+);
+
+CREATE OR REPLACE FUNCTION BREAKPOINT(p_month NUMBER) RETURN DATE
+IS 
+   v_total NUMBER := 0;
+   v_price NUMBER := 0;
+   v_expenses NUMBER := 0;
+   v_date DATE;
+BEGIN
+   FOR i IN (SELECT * FROM transaction WHERE to_char(trunc(transaction_date,'month'), 'mm')=p_month)
+   LOOP
+      SELECT price INTO v_price FROM product p, transaction t WHERE t.id = i.id AND p.id = t.product_id;
+      SELECT amount INTO v_expenses FROM expenses WHERE month = p_month;
+      v_total := v_total + v_price * i.amount;
+      EXIT WHEN v_total >= v_expenses;
+      END LOOP;
+   RETURN v_date;
+END;
+
+/*Q4. You have a schedule of your training, three times a week, for example -
+MON, WED,FRI. Generate records for your schedule table with dates till the
+end of the current year when you have training.
+The schedule table is:
+• ID NUMBER
+• TRAININGDATE DATE
+If training date already exist - don’t insert a record.*/
+
+CREATE TABLE scheTable(
+   id NUMBER,
+   trainingdate DATE
+);
+
+DECLARE
+   cur_date DATE;
+   last_date DATE;
+   cur_day VARCHAR(10);
+   v_id schedule.id%TYPE;
+BEGIN
+   SELECT current_date INTO cur_date FROM DUAL;
+   SELECT last_day(add_months(TRUNC(SYSDATE, 'YEAR'),11)) INTO last_date FROM DUAL;
+   WHILE cur_date <= last_date LOOP
+      SELECT TO_CHAR(cur_date, 'DY') INTO cur_day FROM DUAL;
+      IF cur_day = 'ПН' OR cur_day = 'СР' OR cur_day = 'ПТ' THEN
+         SELECT NVL(MAX(ID), 0) INTO v_id FROM scheTable;
+         v_id := v_id + 1;
+         INSERT INTO scheTable VALUES(v_id, cur_date);
+      END IF;
+      cur_date := cur_date + 1;
+   END LOOP;
+END;
+
+SELECT * FROM scheTable;
