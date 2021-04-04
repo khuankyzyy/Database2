@@ -1,0 +1,127 @@
+1)CREATE TABLE user1
+(
+id NUMBER,
+name VARCHAR(255),
+PRIMARY KEY (id)
+);
+
+create or replace procedure logging_table(
+table_nameq varchar
+) is
+v_columns varchar(255) :='id number, OPERATION_DATE DATE, ACTION VARCHAR(255),ACTIONAUTHOR VARCHAR(255)';
+begin
+ FOR x in (SELECT Column_name, data_type From User_Tab_Columns Where Table_Name =table_nameq)
+ loop
+   v_columns := v_columns || ','||'OLD_' || x.Column_Name || x.data_type ||',' || 'NEW_' ||x.Column_Name ||''||x.data_type;
+   End Loop;
+   EXECUTE IMMEDIATE 'create ' ||table_nameq|| '_LOG'|| '(' || REPLACE(v_columns, 'VARCHAR2','VARCHAR(255)' ) ||')';
+   END;
+   
+   SET SERVEROUTPUT ON
+   BEGIN
+   logging_table('CLASS');
+   end; 
+ 
+2) /AFTER INSERT/ 
+CREATE OR REPLACE TRIGGER after_insert 
+AFTER INSERT 
+   ON user_user 
+  FOR EACH ROW    
+DECLARE 
+   v_username varchar2(15); 
+    
+BEGIN    
+   SELECT user INTO v_username 
+   FROM dual;    
+   INSERT INTO username_log 
+   (new_id, 
+     old_name, 
+     action, 
+    new_name 
+    ) 
+   VALUES 
+   ( :new.id, 
+     :new.v_username, 
+     :new.name, 
+     :new.action);      
+END; 
+ 
+ 
+2)/AFTER UPDATE/ 
+ 
+CREATE OR REPLACE TRIGGER user_after_update 
+AFTER UPDATE 
+   ON username_log 
+  FOR EACH ROW    
+DECLARE 
+   actionauthor varchar2(10); 
+   BEGIN 
+    
+   SELECT user INTO actionauthor  
+   FROM dual;    
+    
+   INSERT INTO user_user 
+   ( id, name ) 
+   VALUES 
+   ( :new.id, 
+     :new.new_name 
+      );   
+      EXCEPTION WHEN OTHERS THEN  
+    DBMS_OUTPUT.PUT_LINE('Кecords have not been updated '); 
+END; 
+ 
+/ 
+ 
+/* AFTER DELETE */ 
+ 
+CREATE OR REPLACE TRIGGER user_after_delete  
+AFTER DELETE  
+ON user_user 
+FOR EACH ROW 
+BEGIN 
+DELETE FROM users_log 
+    WHERE users_log.id = id; 
+    EXCEPTION WHEN OTHERS THEN  
+    DBMS_OUTPUT.PUT_LINE('Nothing was deleted '); 
+END; 
+3) 
+create or replace procedure create_log_trigger(p_table_name varchar) IS
+var2 varchar2(10000);
+var1 varchar2(4000) := 'id number, OPERATION_DATE DATE, ACTION VARCHAR(255), ACTIONAUTHOR VARCHAR(255)';
+var3 varchar2(4000) := 'id, OPERATION_DATE, ACTION, ACTIONAUTHOR';
+var4 varchar2(4000) := 'new_id, sysdate';
+var5 varchar2(4000);
+CURSOR cur_table is
+    select column_name,data_type
+    from user_tab_columns
+    where table_name = p_table_name;
+begin
+    for i IN cur_table loop
+        var1 := var1 ||', '||'old_'||i.column_name ||' '||i.data_type||', '||'new_'||i.column_name|| ' ' ||i.data_type;
+        var3 := var3 ||', '||'old_'||i.column_name ||', '||'new_'||i.column_name;
+        var5 := var5 ||', '||':old.'||i.column_name ||', '||':new.'||i.column_name;
+    end loop;
+    EXECUTE IMMEDIATE 'create table ' || p_table_name || '_LOG' || '(' || REPLACE(var1, 'VARCHAR2', 'VARCHAR(255)') || ')'; 
+     var2 := 'create or replace trigger ' || p_table_name ||'_trig  
+    AFTER DELETE OR INSERT OR UPDATE on '|| p_table_name ||' FOR EACH ROW
+    declare
+        new_id number;
+    BEGIN
+        IF DELETING THEN
+            select NVL(MAX(id), 0)+1 into new_id from ' || p_table_name || '_LOG;
+            INSERT INTO ' || p_table_name || '_log('||var3||')
+            VALUES('||var4||',''delete'',user'||var5||');
+        END IF; 
+        IF INSERTING THEN
+            select NVL(MAX(id), 0)+1 into new_id from ' || p_table_name || '_LOG;
+            INSERT INTO ' || p_table_name || '_log('||var3||')
+            VALUES('||var4||',''insert'',user'||var5||');
+        END IF;
+        IF UPDATING THEN
+            select NVL(MAX(id), 0)+1 into new_id from ' || p_table_name || '_LOG;
+            INSERT INTO ' || p_table_name || '_log('||var3||')
+            VALUES('||var4||',''update'',user'||var5||');
+        END IF;
+    END;';
+    EXECUTE IMMEDIATE var2;
+end;
